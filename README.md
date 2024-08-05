@@ -16,3 +16,9 @@ For inquiries or further information, please contact: [info@lilyqml.de](mailto:i
 | Inquiries and Management | Raul Nieli    | [Email](mailto:raul.nieli@lilyqml.de)                                                                                |
 | Supporting Contributors  | Eileen Kühn   | [GitHub](https://github.com/eileen-kuehn), [KIT Profile](https://www-kseta.ttp.kit.edu/fellows/Eileen.Kuehn/)        |
 | Supporting Contributors  | Max Kühn      | [GitHub](https://github.com/maxfischer2781)                                                                          |
+
+
+## Functionality
+
+![thumbnail_QM-105__1_-removebg-preview (2)](https://github.com/user-attachments/assets/46d8378b-a7c1-4ed9-9306-7a195d558bf1)
+![thumbnail_QM-106-removebg-preview](https://github.com/user-attachments/assets/1c4101b6-4c6d-4aed-aa39-09b3b18b8135)
