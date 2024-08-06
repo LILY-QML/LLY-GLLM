@@ -1,7 +1,6 @@
-qiskit
+pytest
+flake8
 numpy
 pandas
 matplotlib
-reportlab
-seaborn
-scikit-optimize
+# Add other dependencies here

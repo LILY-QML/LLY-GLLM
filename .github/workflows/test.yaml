@@ -44,6 +44,7 @@ jobs:
 
       - name: Run unit tests
         run: |
+          pip install pytest  # Ensures pytest is installed
           pytest tests/
 
   lint:
@@ -65,6 +66,7 @@ jobs:
 
       - name: Run Flake8
         run: |
+          pip install flake8  # Ensures flake8 is installed
           flake8 .
 
   build-report:
