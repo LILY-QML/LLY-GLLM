@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -14,12 +13,19 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from datetime import datetime
-from qiskit.visualization import plot_histogram
 import os
-import seaborn as sns
+
 
 class Visual:
-    def __init__(self, final_summary, comparison_df, circuits, num_iterations, qubits, depth):
+    def __init__(
+        self,
+        final_summary,
+        comparison_df,
+        circuits,
+        num_iterations,
+        qubits,
+        depth,
+    ):
         self.final_summary = final_summary
         self.comparison_df = comparison_df
         self.circuits = circuits
@@ -33,73 +39,118 @@ class Visual:
         doc = SimpleDocTemplate(filename, pagesize=letter)
         story = []
 
-        # Add content
+        # Title Page
         self.add_title_page(story)
-        self.add_comparison_section(story)
 
-        # Add probability distributions
+        # Initial and Final States Comparison Table
+        self.add_comparison_table(story)
+
+        # Probability Distributions and Loss Functions
         self.add_probability_distributions(story)
 
         # Build the PDF
         doc.build(story)
 
     def add_title_page(self, story):
-        title = "Quantum Circuit Report"
-        story.append(Paragraph(title, self.styles['Title']))
-        story.append(Spacer(1, 12))
+        # Create the title page
+        title_page = TitlePage(
+            title="LLY-DML Quantum Circuit Report",
+            subtitle="Part of the LILY Project",
+            description="""<hr/>
+            This report showcases the quantum circuit training results of the LLY-DML model.<br/>
+            The results include a comparison of initial and final states, along with probability distributions and loss functions.<br/>
+            <hr/>""",
+            date=datetime.now().strftime("%d.%m.%Y"),
+            additional_info="""<b>Version:</b> 1.0<br/>
+            <b>Contact:</b> info@lilyqml.de<br/>
+            <b>Website:</b> <a href="http://lilyqml.de">lilyqml.de</a><br/>""",
+        )
+        title_page.build(story, self.styles)
 
-    def add_comparison_section(self, story):
-        story.append(Paragraph("Comparison of Initial and Final States", self.styles['Heading2']))
-        story.append(Spacer(1, 12))
-        
-        # Example: Adding a table with formatted data
-        comparison_data = [[str(i) for i in row] for row in self.comparison_df.values.tolist()]
-        table = Table([self.comparison_df.columns.tolist()] + comparison_data)
-        table.setStyle(
+    def add_comparison_table(self, story):
+        # Section: Comparison Between Initial and Final States
+        story.append(
+            Paragraph(
+                "<a name='section3'/>Comparison Between Initial and Final States",
+                self.styles["Heading2"],
+            )
+        )
+        story.append(Spacer(1, 20))
+
+        # Add the comparison table
+        table_data = [
+            [str(i) for i in row] for row in self.comparison_df.round(4).values.tolist()
+        ]  # Convert all elements to strings
+        comparison_table = Table([self.comparison_df.columns.tolist()] + table_data)
+        comparison_table.setStyle(
             TableStyle(
                 [
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
                 ]
             )
         )
-        story.append(table)
+        story.append(comparison_table)
         story.append(Spacer(1, 20))
+        story.append(PageBreak())
 
     def add_probability_distributions(self, story):
-        story.append(Paragraph("Probability Distributions", self.styles['Heading2']))
-        story.append(Spacer(1, 12))
-        
-        for word, data in self.final_summary.items():
-            # Assuming data is a dictionary with probability distributions
-            probabilities = data.get('probabilities', {})
-            plt.figure(figsize=(10, 6))
-            plt.bar(probabilities.keys(), probabilities.values(), color='blue')
-            plt.xlabel('States')
+        # Section: Probability Distributions and Loss Functions
+        story.append(
+            Paragraph(
+                "<a name='section4'/>Probability Distributions and Loss Functions",
+                self.styles["Heading2"],
+            )
+        )
+        story.append(Spacer(1, 20))
+
+        for summary in self.final_summary:
+            word = summary["Wort"]
+            counts = summary["Counts"]
+            loss = summary["Loss"]
+
+            # Plot Probability Distribution
+            plt.figure(figsize=(10, 5))
+            plt.bar(counts.keys(), counts.values())
+            plt.xlabel('State')
             plt.ylabel('Probability')
             plt.title(f'Probability Distribution for {word}')
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=90)
             plt.tight_layout()
-            image_path = f"{word}_distribution.png"
-            plt.savefig(image_path)
-            plt.close()
 
-            # Add image to PDF
-            story.append(Paragraph(f"Probability Distribution for {word}", self.styles['Heading3']))
-            story.append(Image(image_path, width=400, height=300))
+            # Save and append the image to the PDF
+            prob_dist_path = f"var/{word}_prob_dist.png"
+            plt.savefig(prob_dist_path)
+            plt.close()
+            story.append(Image(prob_dist_path, width=400, height=200))
             story.append(Spacer(1, 20))
 
+            # Plot Loss Function
+            plt.figure(figsize=(10, 5))
+            plt.plot(loss)
+            plt.xlabel('Iteration')
+            plt.ylabel('Loss')
+            plt.title(f'Loss Function for {word}')
+            plt.tight_layout()
+
+            # Save and append the image to the PDF
+            loss_func_path = f"var/{word}_loss_func.png"
+            plt.savefig(loss_func_path)
+            plt.close()
+            story.append(Image(loss_func_path, width=400, height=200))
+            story.append(Spacer(1, 20))
+
+        story.append(PageBreak())
+
+
 class TitlePage:
-    def __init__(
-        self, title, subtitle, copyright_info, description, date, additional_info
-    ):
+    def __init__(self, title, subtitle, description, date, additional_info):
         self.title = title
         self.subtitle = subtitle
-        self.copyright_info = copyright_info
         self.description = description
         self.date = date
         self.additional_info = additional_info
@@ -136,7 +187,6 @@ class TitlePage:
         # Paragraphs with the new styles
         title_paragraph = Paragraph(self.title, title_style)
         subtitle_paragraph = Paragraph(self.subtitle, subtitle_style)
-        copyright_paragraph = Paragraph(self.copyright_info, normal_style)
         description_paragraph = Paragraph(self.description, normal_style)
         big_heading_paragraph = Paragraph(
             "QUANTUM LLY-DML TRAINING REPORT", big_heading_style
@@ -155,7 +205,6 @@ class TitlePage:
             [
                 title_paragraph,
                 subtitle_paragraph,
-                copyright_paragraph,
                 Spacer(1, 40),  # Adjusted space between copyright and description
                 description_paragraph,
                 Spacer(1, 20),
@@ -165,102 +214,5 @@ class TitlePage:
                 date_paragraph,
                 Spacer(1, 40),
                 PageBreak(),  # Page break for the table of contents
-            ]
-        )
-
-
-class TableOfContents:
-    def __init__(self, contents):
-        self.contents = contents
-
-    def build(self, story, styles):
-        toc_title_style = styles["Heading2"]
-        toc_title = Paragraph("Table of Contents", toc_title_style)
-
-        # Create paragraphs for each item in the table of contents
-        toc_entries = [toc_title]
-        toc_style = ParagraphStyle(
-            "toc",
-            parent=styles["Normal"],
-            spaceBefore=5,
-            spaceAfter=5,
-            leftIndent=20,
-            fontSize=12,
-        )
-
-        for entry in self.contents:
-            toc_entry = Paragraph(entry, toc_style)
-            toc_entries.append(toc_entry)
-
-        # Adding content to the story
-        story.extend(toc_entries + [Spacer(1, 40)])
-
-
-class OptimizationMethod:
-    def __init__(self, title, description, use_case):
-        self.title = title
-        self.description = description
-        self.use_case = use_case
-
-    def build(self, story, styles):
-        method_title = Paragraph(f"{self.title}", styles["Heading3"])
-        method_description = Paragraph(
-            f"<b>Description:</b> {self.description}", styles["Normal"]
-        )
-        method_use_case = Paragraph(
-            f"<b>Use Case:</b> {self.use_case}", styles["Normal"]
-        )
-
-        # Adding content to the story
-        story.extend(
-            [
-                method_title,
-                Spacer(1, 10),
-                method_description,
-                Spacer(1, 5),
-                method_use_case,
-                Spacer(1, 20),
-            ]
-        )
-
-
-class ComparisonSection:
-    def __init__(self, content):
-        self.content = content
-
-    def build(self, story, styles):
-        comparison_title_style = styles["Heading2"]
-        comparison_title = Paragraph("Comparison Between Methods", comparison_title_style)
-
-        comparison_content = Paragraph(self.content, styles["Normal"])
-
-        # Adding content to the story
-        story.extend(
-            [
-                comparison_title,
-                Spacer(1, 20),
-                comparison_content,
-                Spacer(1, 40),
-            ]
-        )
-
-
-class FinalResultsSection:
-    def __init__(self, content):
-        self.content = content
-
-    def build(self, story, styles):
-        final_results_title_style = styles["Heading2"]
-        final_results_title = Paragraph("Final Results", final_results_title_style)
-
-        final_results_content = Paragraph(self.content, styles["Normal"])
-
-        # Adding content to the story
-        story.extend(
-            [
-                final_results_title,
-                Spacer(1, 20),
-                final_results_content,
-                Spacer(1, 40),
             ]
         )
