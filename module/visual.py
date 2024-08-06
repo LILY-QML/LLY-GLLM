@@ -18,19 +18,26 @@ from qiskit.visualization import plot_histogram
 import os
 import seaborn as sns
 
-
 class Visual:
     def __init__(
         self,
-        final_summary,
-        comparison_df,
+        results,
+        target_states,
+        initial_training_phases,
+        activation_matrices,
+        circuits,
         num_iterations,
-        shots,
+        qubits,
+        depth,
     ):
-        self.final_summary = final_summary
-        self.comparison_df = comparison_df
+        self.results = results
+        self.target_states = target_states
+        self.initial_training_phases = initial_training_phases
+        self.activation_matrices = activation_matrices
+        self.circuits = circuits
         self.num_iterations = num_iterations
-        self.shots = shots
+        self.qubits = qubits
+        self.depth = depth
         self.styles = getSampleStyleSheet()
 
     def generate_report(self, filename="QuantumCircuitReport.pdf"):
@@ -47,11 +54,14 @@ class Visual:
         # Initiated Data
         self.add_initiated_data(story)
 
-        # Add Loss Graph
-        self.add_loss_graph(story)
+        # Loss Function Plots
+        self.add_loss_function_plots(story)
 
         # Comparison Between Initial and Final Results
         self.add_comparison_section(story)
+
+        # Final Results
+        self.add_final_results_section(story)
 
         # Build the PDF
         doc.build(story)
@@ -82,8 +92,9 @@ class Visual:
         toc = TableOfContents(
             contents=[
                 "<link href='#section1' color='blue'>1. Initiated Data</link>",
-                "<link href='#section2' color='blue'>2. Loss Function</link>",
+                "<link href='#section2' color='blue'>2. Loss Function Plots</link>",
                 "<link href='#section3' color='blue'>3. Comparison Between Initial and Final Results</link>",
+                "<link href='#section4' color='blue'>4. Final Results</link>",
             ]
         )
         toc.build(story, self.styles)
@@ -95,10 +106,21 @@ class Visual:
         )
         story.append(Spacer(1, 20))
 
+        # Initial Quantum Circuit
+        circuit_image_path = os.path.join("var", "circuit_initial_1.png")
+        story.append(
+            Paragraph("Initial Quantum Circuit:", self.styles["Heading3"])
+        )  # Add a title for the section
+        if os.path.exists(circuit_image_path):
+            story.append(Image(circuit_image_path, width=400, height=200))
+        story.append(Spacer(1, 20))
+
         # Table with initial data
         data = {
-            "Iterations": self.num_iterations,
-            "Shots": self.shots,
+            "Qubits": self.qubits,
+            "Depth": self.depth,
+            "Shots": self.results[0]["Final Counts"]["shots"],
+            "Max Iterations": self.num_iterations,
         }
         data_df = pd.DataFrame([data])
         table = Table([data_df.columns.tolist()] + data_df.values.tolist())
@@ -118,31 +140,36 @@ class Visual:
         story.append(Spacer(1, 20))
         story.append(PageBreak())
 
-    def add_loss_graph(self, story):
-        # Section 2: Loss Function Graph
+    def add_loss_function_plots(self, story):
+        # Section 2: Loss Function Plots
         story.append(
-            Paragraph("<a name='section2'/>2. Loss Function", self.styles["Heading2"])
+            Paragraph("<a name='section2'/>2. Loss Function Plots", self.styles["Heading2"])
         )
         story.append(Spacer(1, 20))
 
-        # Plot Loss Function Graph
-        plt.figure(figsize=(10, 6))
-        for summary in self.final_summary:
-            word = summary["Wort"]
-            losses = summary["Loss"]
-            plt.plot(losses, label=f"Loss for {word}")
+        # Group loss functions (max 5 per plot)
+        losses = self.results['loss']
+        num_plots = (len(losses) + 4) // 5  # Calculate number of plots needed
 
-        plt.title("Loss Function Over Iterations")
-        plt.xlabel("Iteration")
-        plt.ylabel("Loss")
-        plt.legend(loc="upper right")
-        loss_graph_path = os.path.join("var", "loss_graph.png")
-        plt.savefig(loss_graph_path)
-        plt.close()
+        for i in range(num_plots):
+            plt.figure(figsize=(10, 6))
+            for j in range(5):
+                index = i * 5 + j
+                if index < len(losses):
+                    plt.plot(losses[index], label=f'Loss Function {index+1}')
 
-        # Add loss graph image to the report
-        story.append(Image(loss_graph_path, width=500, height=300))
-        story.append(Spacer(1, 20))
+            plt.title(f"Loss Functions {i*5+1} to {(i+1)*5}")
+            plt.xlabel("Iterations")
+            plt.ylabel("Loss")
+            plt.legend()
+            loss_plot_path = os.path.join("var", f"loss_plot_{i+1}.png")
+            plt.savefig(loss_plot_path)
+            plt.close()
+
+            # Add loss plot to the report
+            story.append(Image(loss_plot_path, width=400, height=300))
+            story.append(Spacer(1, 20))
+        
         story.append(PageBreak())
 
     def add_comparison_section(self, story):
@@ -155,14 +182,15 @@ class Visual:
         )
         story.append(Spacer(1, 20))
 
-        # Convert floats to strings for reportlab compatibility
-        comparison_df = self.comparison_df.copy()
-        comparison_df["Initial Wahrscheinlichkeit"] = comparison_df[
-            "Initial Wahrscheinlichkeit"
-        ].apply(lambda x: f"{x:.6f}")
-        comparison_df["Final Wahrscheinlichkeit"] = comparison_df[
-            "Final Wahrscheinlichkeit"
-        ].apply(lambda x: f"{x:.6f}")
+        # Create a DataFrame for comparison
+        comparison_data = {
+            "Wort": self.results["words"],
+            "Initial Zustand": self.results["initial_states"],
+            "Initial Wahrscheinlichkeit": self.results["initial_probabilities"],
+            "Final Zustand": self.results["final_states"],
+            "Final Wahrscheinlichkeit": self.results["final_probabilities"],
+        }
+        comparison_df = pd.DataFrame(comparison_data)
 
         # Add the comparison table
         table_data = [
@@ -178,11 +206,30 @@ class Visual:
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
                 ]
             )
         )
         story.append(comparison_table)
         story.append(Spacer(1, 20))
+
+        # Generate probability distribution plots for each word
+        for index, word in enumerate(self.results["words"]):
+            probabilities = self.results["probabilities"][index]
+            plt.figure(figsize=(10, 6))
+            plt.bar(range(len(probabilities)), probabilities, color='blue', alpha=0.7)
+            plt.title(f"Probability Distribution for '{word}'")
+            plt.xlabel("State Index")
+            plt.ylabel("Probability")
+            plt.xticks(range(len(probabilities)))
+            plot_path = os.path.join("var", f"probability_plot_{index+1}.png")
+            plt.savefig(plot_path)
+            plt.close()
+
+            # Add plot to the report
+            story.append(Image(plot_path, width=400, height=300))
+            story.append(Spacer(1, 20))
+
         story.append(PageBreak())
 
     def add_final_results_section(self, story):
@@ -193,12 +240,12 @@ class Visual:
         story.append(Spacer(1, 20))
 
         # Determine the best optimizer
-        final_df = pd.DataFrame(self.final_summary)
+        final_df = pd.DataFrame(self.results)
         final_df["Improvement"] = (
             final_df["Final Wahrscheinlichkeit"] - final_df["Initial Wahrscheinlichkeit"]
         )
         best_optimizer = final_df.loc[
-            final_df["Improvement"].idxmax(), "Wort"
+            final_df["Improvement"].idxmax(), "Optimizer"
         ]
 
         final_results_content = f"The most effective optimization method was <b>{best_optimizer}</b>, which achieved the highest improvement in target state probability."
@@ -308,6 +355,55 @@ class TableOfContents:
 
         # Adding content to the story
         story.extend(toc_entries + [Spacer(1, 40)])
+
+
+class OptimizationMethod:
+    def __init__(self, title, description, use_case):
+        self.title = title
+        self.description = description
+        self.use_case = use_case
+
+    def build(self, story, styles):
+        method_title = Paragraph(f"{self.title}", styles["Heading3"])
+        method_description = Paragraph(
+            f"<b>Description:</b> {self.description}", styles["Normal"]
+        )
+        method_use_case = Paragraph(
+            f"<b>Use Case:</b> {self.use_case}", styles["Normal"]
+        )
+
+        # Adding content to the story
+        story.extend(
+            [
+                method_title,
+                Spacer(1, 10),
+                method_description,
+                Spacer(1, 5),
+                method_use_case,
+                Spacer(1, 20),
+            ]
+        )
+
+
+class ComparisonSection:
+    def __init__(self, content):
+        self.content = content
+
+    def build(self, story, styles):
+        comparison_title_style = styles["Heading2"]
+        comparison_title = Paragraph("Comparison Between Methods", comparison_title_style)
+
+        comparison_content = Paragraph(self.content, styles["Normal"])
+
+        # Adding content to the story
+        story.extend(
+            [
+                comparison_title,
+                Spacer(1, 20),
+                comparison_content,
+                Spacer(1, 40),
+            ]
+        )
 
 
 class FinalResultsSection:

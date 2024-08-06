@@ -7,8 +7,10 @@ from module.tokenizer import Tokenizer  # Importiere die Tokenizer-Klasse
 from module.optimizer import AdamOptimizer  # Importiere den AdamOptimizer
 from module.visual import Visual  # Importiere die Visual-Klasse
 
+
 class LLYGLLM:
     """LLY-GLLM class that reads configuration from a JSON file and creates a quantum circuit."""
+
     def __init__(self, config_file, learning_rate=0.01, max_iterations=100):
         self.config_file = config_file
         self.qubits = 0
@@ -26,33 +28,41 @@ class LLYGLLM:
     def load_configuration(self):
         """Load the number of qubits, L-gates, iterations, and shots from a JSON file."""
         try:
-            with open(self.config_file, 'r') as file:
+            with open(self.config_file, "r") as file:
                 data = json.load(file)
                 self.single_words = data.get("single_words", [])
                 self.word_combinations = data.get("word_combinations", {})
 
                 # Anzahl der Qubits entspricht der Anzahl der Wörter
                 self.qubits = len(self.single_words)
-                self.l_gates = len(self.single_words) + 2 * len(self.word_combinations)  # Ein Layer pro Wort + Zwei Layer pro Kombination
+                self.l_gates = len(self.single_words) + 2 * len(
+                    self.word_combinations
+                )  # Ein Layer pro Wort + Zwei Layer pro Kombination
 
                 # Lade Iterationen und Shots
                 self.iterations = data.get("iterations", self.max_iterations)
                 self.shots = data.get("shots", 1024)
 
                 # Debug-Ausgabe zur Überprüfung der geladenen Werte
-                print(f"Loaded configuration: {self.qubits} qubits, {self.l_gates} L-gates, {self.iterations} iterations, {self.shots} shots")
+                print(
+                    f"Loaded configuration: {self.qubits} qubits, {self.l_gates} L-gates, {self.iterations} iterations, {self.shots} shots"
+                )
 
         except FileNotFoundError:
             print(f"Configuration file {self.config_file} not found.")
         except json.JSONDecodeError:
-            print(f"Error decoding JSON from file {self.config_file}. Please ensure it is correctly formatted.")
+            print(
+                f"Error decoding JSON from file {self.config_file}. Please ensure it is correctly formatted."
+            )
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
     def tokenize_word(self, word):
         """Tokenize a single word and return a 3x20 matrix of tokens."""
         token = self.tokenizer.tokenize(word)
-        return np.array(token).T  # Transponiere, um die Form (3, token_length) zu erhalten
+        return np.array(
+            token
+        ).T  # Transponiere, um die Form (3, token_length) zu erhalten
 
     def create(self):
         """Create a quantum circuit with the specified number of qubits and L-gates."""
@@ -61,10 +71,12 @@ class LLYGLLM:
 
         # Check for valid configuration
         if self.qubits <= 0 or self.l_gates <= 0:
-            raise ValueError("Invalid configuration: Number of qubits and L-gates must be greater than 0.")
+            raise ValueError(
+                "Invalid configuration: Number of qubits and L-gates must be greater than 0."
+            )
 
         layers = []
-        
+
         # Generiere einmalige Trainingsphasen
         self.tp_matrix = np.random.rand(3, self.qubits) * 2 * np.pi
         print(f"TP Matrix (constant):\n{self.tp_matrix}\n")
@@ -85,14 +97,23 @@ class LLYGLLM:
             state, probability, counts = self.run_single_layer(circuit)
 
             # Zustand speichern zusammen mit dem Wort
-            self.initial_summary.append({"Wort": word, "Zustand": state, "Wahrscheinlichkeit": probability, "Counts": counts})
+            self.initial_summary.append(
+                {
+                    "Wort": word,
+                    "Zustand": state,
+                    "Wahrscheinlichkeit": probability,
+                    "Counts": counts,
+                }
+            )
 
         # Initiale Tabelle mit Layer-Informationen anzeigen
-        self.display_summary(self.initial_summary, title="Initial Summary of Circuit Layers")
+        self.display_summary(
+            self.initial_summary, title="Initial Summary of Circuit Layers"
+        )
 
     def run_single_layer(self, circuit):
         """Run a single layer of the quantum circuit and return the result state and its probability."""
-        simulator = Aer.get_backend('aer_simulator')
+        simulator = Aer.get_backend("aer_simulator")
         circuit.run(simulator)
         counts = circuit.get_counts()
 
@@ -111,7 +132,9 @@ class LLYGLLM:
 
     def train(self):
         """Train the quantum circuit to optimize the TP matrix for each word in single_words."""
-        simulator = Aer.get_backend('aer_simulator')  # Den Simulator hier initialisieren
+        simulator = Aer.get_backend(
+            "aer_simulator"
+        )  # Den Simulator hier initialisieren
 
         # Erste Schleife: Training mit einzelnen Wörtern
         for summary in self.initial_summary:
@@ -132,7 +155,7 @@ class LLYGLLM:
                 circuit=circuit,
                 target_state=initial_state,
                 learning_rate=self.learning_rate,
-                max_iterations=self.iterations
+                max_iterations=self.iterations,
             )
 
             # Optimiere die Trainingsphasen
@@ -147,10 +170,20 @@ class LLYGLLM:
             layer.tp_matrix = optimized_phases
 
             # Führe den Circuit mit den optimierten Phasen erneut aus
-            state_optimized, probability_optimized, counts_optimized = self.run_single_layer(circuit)
+            state_optimized, probability_optimized, counts_optimized = (
+                self.run_single_layer(circuit)
+            )
 
             # Speichere den optimierten Zustand zusammen mit dem Wort
-            self.final_summary.append({"Wort": word, "Zustand": state_optimized, "Wahrscheinlichkeit": probability_optimized, "Counts": counts_optimized, "Loss": losses})
+            self.final_summary.append(
+                {
+                    "Wort": word,
+                    "Zustand": state_optimized,
+                    "Wahrscheinlichkeit": probability_optimized,
+                    "Counts": counts_optimized,
+                    "Loss": losses,
+                }
+            )
 
         # Zweite Schleife: Training mit Wortkombinationen
         for combination, result in self.word_combinations.items():
@@ -182,7 +215,7 @@ class LLYGLLM:
                 circuit=circuit,
                 target_state=expected_state,  # Der Zielzustand ist das resultierende Wort
                 learning_rate=self.learning_rate,
-                max_iterations=self.iterations
+                max_iterations=self.iterations,
             )
 
             # Optimiere die Trainingsphasen des zweiten Layers
@@ -190,20 +223,34 @@ class LLYGLLM:
 
             # Ausgabe der Ergebnisse der Optimierung
             print(f"\nOptimierung für Kombination: {combination} = {result}")
-            print(f"Optimierte Trainingsphasen für zweites Layer:\n{optimized_phases}\n")
+            print(
+                f"Optimierte Trainingsphasen für zweites Layer:\n{optimized_phases}\n"
+            )
             print(f"Verlustverlauf:\n{losses}\n")
 
             # Aktualisiere die TP-Matrix des zweiten Layers mit den optimierten Phasen
             second_layer.tp_matrix = optimized_phases
 
             # Führe den Circuit mit den optimierten Phasen erneut aus
-            state_optimized, probability_optimized, counts_optimized = self.run_single_layer(circuit)
+            state_optimized, probability_optimized, counts_optimized = (
+                self.run_single_layer(circuit)
+            )
 
             # Speichere den optimierten Zustand zusammen mit dem Ergebniswort
-            self.final_summary.append({"Wort": f"{combination} = {result}", "Zustand": state_optimized, "Wahrscheinlichkeit": probability_optimized, "Counts": counts_optimized, "Loss": losses})
+            self.final_summary.append(
+                {
+                    "Wort": f"{combination} = {result}",
+                    "Zustand": state_optimized,
+                    "Wahrscheinlichkeit": probability_optimized,
+                    "Counts": counts_optimized,
+                    "Loss": losses,
+                }
+            )
 
         # Finalisierte Tabelle mit Layer-Informationen anzeigen
-        self.display_summary(self.final_summary, title="Final Summary of Circuit Layers")
+        self.display_summary(
+            self.final_summary, title="Final Summary of Circuit Layers"
+        )
 
         # Vergleiche initiale und finale Zustände
         self.compare_summaries(self.initial_summary, self.final_summary)
@@ -214,9 +261,20 @@ class LLYGLLM:
         final_df = pd.DataFrame(final_summary)
 
         comparison_df = initial_df.copy()
-        comparison_df.columns = ["Wort", "Initial Zustand", "Initial Wahrscheinlichkeit", "Initial Counts"]
+        comparison_df.columns = [
+            "Wort",
+            "Initial Zustand",
+            "Initial Wahrscheinlichkeit",
+            "Initial Counts",
+        ]
 
-        final_df.columns = ["Wort", "Final Zustand", "Final Wahrscheinlichkeit", "Final Counts", "Loss"]
+        final_df.columns = [
+            "Wort",
+            "Final Zustand",
+            "Final Wahrscheinlichkeit",
+            "Final Counts",
+            "Loss",
+        ]
 
         # Merge the dataframes to show comparisons
         comparison_df = pd.merge(comparison_df, final_df, on="Wort")

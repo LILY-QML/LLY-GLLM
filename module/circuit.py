@@ -1,9 +1,14 @@
-from qiskit import QuantumCircuit, transpile  # Stellen Sie sicher, dass 'transpile' importiert ist
+from qiskit import (
+    QuantumCircuit,
+    transpile,
+)  # Stellen Sie sicher, dass 'transpile' importiert ist
 import numpy as np
 from qiskit_aer import Aer  # Importiere den Simulator hier
 
+
 class LGate:
     """Represents an L-Gate applied to a single qubit."""
+
     def __init__(self, qubit, tp_phases, ip_phases):
         self.qubit = qubit
         self.tp_phases = tp_phases  # List of 3 training phases
@@ -21,8 +26,10 @@ class LGate:
             if i < 2:
                 circuit.h(self.qubit)
 
+
 class Layer:
     """Represents a layer of L-Gates applied to all qubits."""
+
     def __init__(self, qubits, tp_matrix, ip_matrix):
         self.qubits = qubits
         self.tp_matrix = tp_matrix  # Speichern der TP-Matrix
@@ -38,8 +45,10 @@ class Layer:
         for l_gate in self.l_gates:
             l_gate.apply(circuit)
 
+
 class Circuit:
     """Represents a quantum circuit composed of multiple layers."""
+
     def __init__(self, qubits, layers, shots):
         self.qubits = qubits
         self.layers = layers  # List of Layer objects
@@ -62,9 +71,15 @@ class Circuit:
     def run(self, simulator=None):
         """Run the quantum circuit simulation and return the result."""
         if simulator is None:
-            simulator = Aer.get_backend('aer_simulator')  # Standardmäßig den Aer Simulator verwenden
-        compiled_circuit = transpile(self.circuit, simulator)  # Ensure transpile is used here
-        self.simulation_result = simulator.run(compiled_circuit, shots=self.shots).result()
+            simulator = Aer.get_backend(
+                "aer_simulator"
+            )  # Standardmäßig den Aer Simulator verwenden
+        compiled_circuit = transpile(
+            self.circuit, simulator
+        )  # Ensure transpile is used here
+        self.simulation_result = simulator.run(
+            compiled_circuit, shots=self.shots
+        ).result()
         return self.simulation_result
 
     def get_counts(self):
@@ -105,7 +120,9 @@ class Circuit:
             max_state = max(counts, key=counts.get)
             probability = counts[max_state] / sum(counts.values())
 
-            print(f"Target state: {target_state}, Max state: {max_state}, Probability: {probability}")
+            print(
+                f"Target state: {target_state}, Max state: {max_state}, Probability: {probability}"
+            )
 
     def __repr__(self):
-        return self.circuit.draw(output='text').__str__()
+        return self.circuit.draw(output="text").__str__()

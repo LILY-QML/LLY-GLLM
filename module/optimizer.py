@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from qiskit_aer import Aer
 from module.circuit import Circuit  # Importiere die Circuit-Klasse
 
+
 class Optimizer:
     def __init__(self, circuit, target_state, learning_rate, max_iterations):
         self.circuit = circuit
@@ -23,7 +24,9 @@ class Optimizer:
 
     def optimize(self):
         # Initialisiere beste Phasen und Verlust
-        best_phases = np.array(self.circuit.layers[0].tp_matrix)  # Zugriff auf das Layer
+        best_phases = np.array(
+            self.circuit.layers[0].tp_matrix
+        )  # Zugriff auf das Layer
         best_loss = float("inf")
         losses = []
 
@@ -32,7 +35,9 @@ class Optimizer:
         initial_counts = self.circuit.get_counts()
         self.initial_distribution = self.get_distribution(initial_counts)
         if self.initial_distribution is None:
-            print("Warning: Initial distribution is None. Check circuit run and get_counts().")
+            print(
+                "Warning: Initial distribution is None. Check circuit run and get_counts()."
+            )
         self.initial_probability = self.initial_distribution.get(self.target_state, 0.0)
 
         for iteration in range(self.max_iterations):
@@ -80,7 +85,9 @@ class Optimizer:
             print("Warning: Total shots is zero. Counts may be incorrect.")
             return {}
         distribution = {state: counts[state] / total_shots for state in counts}
-        return dict(sorted(distribution.items(), key=lambda item: item[1], reverse=True))
+        return dict(
+            sorted(distribution.items(), key=lambda item: item[1], reverse=True)
+        )
 
     def plot_distribution(self, counts, title):
         """Plotten Sie ein Histogramm der Zustandsverteilung."""
@@ -96,6 +103,7 @@ class Optimizer:
         )
         ax.set_title(title, fontsize=16)
         plt.show()
+
 
 class AdamOptimizer(Optimizer):
     def __init__(self, *args, beta1=0.9, beta2=0.999, epsilon=1e-8, **kwargs):
@@ -113,9 +121,10 @@ class AdamOptimizer(Optimizer):
         self.t += 1
         gradient = np.random.normal(0, self.learning_rate, current_phases.shape)
         self.m = self.beta1 * self.m + (1 - self.beta1) * gradient
-        self.v = self.beta2 * self.v + (1 - self.beta2) * (gradient ** 2)
-        m_hat = self.m / (1 - self.beta1 ** self.t)
-        v_hat = self.v / (1 - self.beta2 ** self.t)
-        new_phases = current_phases + self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+        self.v = self.beta2 * self.v + (1 - self.beta2) * (gradient**2)
+        m_hat = self.m / (1 - self.beta1**self.t)
+        v_hat = self.v / (1 - self.beta2**self.t)
+        new_phases = current_phases + self.learning_rate * m_hat / (
+            np.sqrt(v_hat) + self.epsilon
+        )
         return new_phases
-
