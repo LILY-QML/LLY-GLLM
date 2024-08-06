@@ -1,0 +1,7 @@
+qiskit
+numpy
+pandas
+matplotlib
+reportlab
+seaborn
+scikit-optimize

@@ -1,0 +1,34 @@
+{
+    "single_words": [
+        "König",
+        "Frau",
+        "Baum",
+        "Haus",
+        "Hund",
+        "Katze",
+        "Auto",
+        "Buch",
+        "Königin",
+        "Baumhaus",
+        "Tier",
+        "Autobiografie",
+        "Königsbuch",
+        "Hundebesitzerin",
+        "Haustier",
+        "Autodach",
+        "Bibliothek"
+    ],
+    "word_combinations": {
+        "König Frau": "Königin",
+        "Baum Haus": "Baumhaus",
+        "Hund Katze": "Tier",
+        "Auto Buch": "Autobiografie",
+        "König Buch": "Königsbuch",
+        "Frau Hund": "Hundebesitzerin",
+        "Katze Haus": "Haustier",
+        "Baum Auto": "Autodach",
+        "Haus Buch": "Bibliothek"
+    },
+    "iterations": 100,
+    "shots": 1024
+}
