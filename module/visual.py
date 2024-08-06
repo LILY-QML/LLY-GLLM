@@ -22,13 +22,11 @@ import seaborn as sns
 class Visual:
     def __init__(
         self,
-        initial_summary,
         final_summary,
         comparison_df,
         num_iterations,
         shots,
     ):
-        self.initial_summary = initial_summary
         self.final_summary = final_summary
         self.comparison_df = comparison_df
         self.num_iterations = num_iterations
@@ -43,17 +41,17 @@ class Visual:
         # Title Page
         self.add_title_page(story)
 
-        # Initial Summary
-        self.add_summary_table(story, self.initial_summary, title="Initial Summary of Circuit Layers")
+        # Table of Contents
+        self.add_table_of_contents(story)
 
-        # Final Summary
-        self.add_summary_table(story, self.final_summary, title="Final Summary of Circuit Layers")
+        # Initiated Data
+        self.add_initiated_data(story)
 
-        # Comparison Between Initial and Final Summaries
-        self.add_comparison_section(story)
-
-        # Add the loss graph
+        # Add Loss Graph
         self.add_loss_graph(story)
+
+        # Comparison Between Initial and Final Results
+        self.add_comparison_section(story)
 
         # Build the PDF
         doc.build(story)
@@ -80,61 +78,30 @@ class Visual:
         )
         title_page.build(story, self.styles)
 
-    def add_summary_table(self, story, summary, title):
-        """Add a summary table of the circuit layers and their words."""
-        story.append(Paragraph(title, self.styles["Heading2"]))
-        story.append(Spacer(1, 20))
-
-        df = pd.DataFrame(summary)
-        table_data = [df.columns.tolist()] + df.values.tolist()
-        table = Table(table_data)
-
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                ]
-            )
+    def add_table_of_contents(self, story):
+        toc = TableOfContents(
+            contents=[
+                "<link href='#section1' color='blue'>1. Initiated Data</link>",
+                "<link href='#section2' color='blue'>2. Loss Function</link>",
+                "<link href='#section3' color='blue'>3. Comparison Between Initial and Final Results</link>",
+            ]
         )
-        story.append(table)
-        story.append(Spacer(1, 20))
-        story.append(PageBreak())
+        toc.build(story, self.styles)
 
-    def add_comparison_section(self, story):
-        # Add comparison section
+    def add_initiated_data(self, story):
+        # Add initial data section
         story.append(
-            Paragraph("<a name='section3'/>3. Comparison Between Initial and Final Summaries", self.styles["Heading2"])
+            Paragraph("<a name='section1'/>1. Initiated Data", self.styles["Heading2"])
         )
         story.append(Spacer(1, 20))
 
-        for idx, row in self.comparison_df.iterrows():
-            fig, ax = plt.subplots()
-            # Generate a probability distribution plot for each word
-            ax.bar(row["Initial Zustand"], row["Initial Wahrscheinlichkeit"], color='blue', alpha=0.5, label="Initial")
-            ax.bar(row["Final Zustand"], row["Final Wahrscheinlichkeit"], color='red', alpha=0.5, label="Final")
-            ax.set_title(f"Probability Distribution for {row['Wort']}")
-            ax.set_xlabel("States")
-            ax.set_ylabel("Probability")
-            ax.legend()
-
-            # Save the plot as an image
-            plot_path = os.path.join("var", f"{row['Wort']}_probability_distribution.png")
-            plt.savefig(plot_path)
-            plt.close()
-
-            # Add the image to the PDF
-            story.append(Image(plot_path, width=400, height=300))
-            story.append(Spacer(1, 20))
-
-        # Table with comparison data
-        table_data = [self.comparison_df.columns.tolist()] + self.comparison_df.values.tolist()
-        table = Table(table_data)
-
+        # Table with initial data
+        data = {
+            "Iterations": self.num_iterations,
+            "Shots": self.shots,
+        }
+        data_df = pd.DataFrame([data])
+        table = Table([data_df.columns.tolist()] + data_df.values.tolist())
         table.setStyle(
             TableStyle(
                 [
@@ -152,30 +119,92 @@ class Visual:
         story.append(PageBreak())
 
     def add_loss_graph(self, story):
-        """Add a graph of the loss function to the report."""
-        plt.figure(figsize=(10, 6))
-        plt.title("Loss Function Over Iterations")
-        plt.xlabel("Iterations")
-        plt.ylabel("Loss")
-        
-        # Hier müsste der Verlustverlauf über die Iterationen hinweg geplottet werden
-        # Angenommen, dass die Verlustdaten in self.final_summary als 'Loss' enthalten sind
-        for summary in self.final_summary:
-            if "Loss" in summary:
-                plt.plot(range(len(summary["Loss"])), summary["Loss"], label=f"{summary['Wort']} Loss")
-        
-        plt.legend()
-        plt.grid(True)
+        # Section 2: Loss Function Graph
+        story.append(
+            Paragraph("<a name='section2'/>2. Loss Function", self.styles["Heading2"])
+        )
+        story.append(Spacer(1, 20))
 
-        # Save the loss graph as an image
+        # Plot Loss Function Graph
+        plt.figure(figsize=(10, 6))
+        for summary in self.final_summary:
+            word = summary["Wort"]
+            losses = summary["Loss"]
+            plt.plot(losses, label=f"Loss for {word}")
+
+        plt.title("Loss Function Over Iterations")
+        plt.xlabel("Iteration")
+        plt.ylabel("Loss")
+        plt.legend(loc="upper right")
         loss_graph_path = os.path.join("var", "loss_graph.png")
         plt.savefig(loss_graph_path)
         plt.close()
 
-        # Add the loss graph to the PDF
+        # Add loss graph image to the report
         story.append(Image(loss_graph_path, width=500, height=300))
         story.append(Spacer(1, 20))
         story.append(PageBreak())
+
+    def add_comparison_section(self, story):
+        # Section 3: Comparison Between Initial and Final Results
+        story.append(
+            Paragraph(
+                "<a name='section3'/>3. Comparison Between Initial and Final Results",
+                self.styles["Heading2"],
+            )
+        )
+        story.append(Spacer(1, 20))
+
+        # Convert floats to strings for reportlab compatibility
+        comparison_df = self.comparison_df.copy()
+        comparison_df["Initial Wahrscheinlichkeit"] = comparison_df[
+            "Initial Wahrscheinlichkeit"
+        ].apply(lambda x: f"{x:.6f}")
+        comparison_df["Final Wahrscheinlichkeit"] = comparison_df[
+            "Final Wahrscheinlichkeit"
+        ].apply(lambda x: f"{x:.6f}")
+
+        # Add the comparison table
+        table_data = [
+            [str(i) for i in row] for row in comparison_df.round(4).values.tolist()
+        ]  # Convert all elements to strings
+        comparison_table = Table([comparison_df.columns.tolist()] + table_data)
+        comparison_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
+        story.append(comparison_table)
+        story.append(Spacer(1, 20))
+        story.append(PageBreak())
+
+    def add_final_results_section(self, story):
+        # Section 4: Final Results
+        story.append(
+            Paragraph("<a name='section4'/>4. Final Results", self.styles["Heading2"])
+        )
+        story.append(Spacer(1, 20))
+
+        # Determine the best optimizer
+        final_df = pd.DataFrame(self.final_summary)
+        final_df["Improvement"] = (
+            final_df["Final Wahrscheinlichkeit"] - final_df["Initial Wahrscheinlichkeit"]
+        )
+        best_optimizer = final_df.loc[
+            final_df["Improvement"].idxmax(), "Wort"
+        ]
+
+        final_results_content = f"The most effective optimization method was <b>{best_optimizer}</b>, which achieved the highest improvement in target state probability."
+
+        final_results_section = FinalResultsSection(content=final_results_content)
+        final_results_section.build(story, self.styles)
 
 
 class TitlePage:
@@ -250,5 +279,53 @@ class TitlePage:
                 date_paragraph,
                 Spacer(1, 40),
                 PageBreak(),  # Page break for the table of contents
+            ]
+        )
+
+
+class TableOfContents:
+    def __init__(self, contents):
+        self.contents = contents
+
+    def build(self, story, styles):
+        toc_title_style = styles["Heading2"]
+        toc_title = Paragraph("Table of Contents", toc_title_style)
+
+        # Create paragraphs for each item in the table of contents
+        toc_entries = [toc_title]
+        toc_style = ParagraphStyle(
+            "toc",
+            parent=styles["Normal"],
+            spaceBefore=5,
+            spaceAfter=5,
+            leftIndent=20,
+            fontSize=12,
+        )
+
+        for entry in self.contents:
+            toc_entry = Paragraph(entry, toc_style)
+            toc_entries.append(toc_entry)
+
+        # Adding content to the story
+        story.extend(toc_entries + [Spacer(1, 40)])
+
+
+class FinalResultsSection:
+    def __init__(self, content):
+        self.content = content
+
+    def build(self, story, styles):
+        final_results_title_style = styles["Heading2"]
+        final_results_title = Paragraph("Final Results", final_results_title_style)
+
+        final_results_content = Paragraph(self.content, styles["Normal"])
+
+        # Adding content to the story
+        story.extend(
+            [
+                final_results_title,
+                Spacer(1, 20),
+                final_results_content,
+                Spacer(1, 40),
             ]
         )

@@ -226,7 +226,7 @@ class LLYGLLM:
         print(comparison_df.to_string(index=False))
 
         # Plot the comparison using Visual class
-        visual = Visual(initial_summary, final_summary, comparison_df, self.iterations, self.shots)
+        visual = Visual(self.final_summary, comparison_df, self.iterations, self.shots)
         visual.generate_report()
 
     def __repr__(self):
