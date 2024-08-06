@@ -19,21 +19,9 @@ import os
 import seaborn as sns
 
 class Visual:
-    def __init__(
-        self,
-        results,
-        target_states,
-        initial_training_phases,
-        activation_matrices,
-        circuits,
-        num_iterations,
-        qubits,
-        depth,
-    ):
-        self.results = results
-        self.target_states = target_states
-        self.initial_training_phases = initial_training_phases
-        self.activation_matrices = activation_matrices
+    def __init__(self, final_summary, comparison_df, circuits, num_iterations, qubits, depth):
+        self.final_summary = final_summary
+        self.comparison_df = comparison_df
         self.circuits = circuits
         self.num_iterations = num_iterations
         self.qubits = qubits
@@ -45,214 +33,65 @@ class Visual:
         doc = SimpleDocTemplate(filename, pagesize=letter)
         story = []
 
-        # Title Page
+        # Add content
         self.add_title_page(story)
-
-        # Table of Contents
-        self.add_table_of_contents(story)
-
-        # Initiated Data
-        self.add_initiated_data(story)
-
-        # Loss Function Plots
-        self.add_loss_function_plots(story)
-
-        # Comparison Between Initial and Final Results
         self.add_comparison_section(story)
 
-        # Final Results
-        self.add_final_results_section(story)
+        # Add probability distributions
+        self.add_probability_distributions(story)
 
         # Build the PDF
         doc.build(story)
 
     def add_title_page(self, story):
-        # Create the title page
-        title_page = TitlePage(
-            title="LLY-DML",
-            subtitle="Part of the LILY Project",
-            copyright_info="""Copyright Protection and All Rights Reserved.<br/>
-            Contact: <a href="mailto:info@lilyqml.de">info@lilyqml.de</a><br/>
-            Website: <a href="http://lilyqml.de">lilyqml.de</a>""",
-            description="""<hr/>
-            This is LLY-DML, a model of the LILY Quantum Machine Learning Project.<br/>
-            Its task is to train datasets to a state using so-called L-Gates, quantum machine learning gates.<br/>
-            Input data is used in parts of the machine learning gates, and other phases are optimized so that a state becomes particularly likely.<br/>
-            <hr/>""",
-            date=datetime.now().strftime("%d.%m.%Y"),
-            additional_info="""<b>Date:</b> 01.08.2024<br/>
-            <b>Author:</b> LILY Team<br/>
-            <b>Version:</b> 1.0<br/>
-            <b>Contact:</b> info@lilyqml.de<br/>
-            <b>Website:</b> <a href="http://lilyqml.de">lilyqml.de</a><br/>""",
-        )
-        title_page.build(story, self.styles)
+        title = "Quantum Circuit Report"
+        story.append(Paragraph(title, self.styles['Title']))
+        story.append(Spacer(1, 12))
 
-    def add_table_of_contents(self, story):
-        toc = TableOfContents(
-            contents=[
-                "<link href='#section1' color='blue'>1. Initiated Data</link>",
-                "<link href='#section2' color='blue'>2. Loss Function Plots</link>",
-                "<link href='#section3' color='blue'>3. Comparison Between Initial and Final Results</link>",
-                "<link href='#section4' color='blue'>4. Final Results</link>",
-            ]
-        )
-        toc.build(story, self.styles)
-
-    def add_initiated_data(self, story):
-        # Add initial data section
-        story.append(
-            Paragraph("<a name='section1'/>1. Initiated Data", self.styles["Heading2"])
-        )
-        story.append(Spacer(1, 20))
-
-        # Initial Quantum Circuit
-        circuit_image_path = os.path.join("var", "circuit_initial_1.png")
-        story.append(
-            Paragraph("Initial Quantum Circuit:", self.styles["Heading3"])
-        )  # Add a title for the section
-        if os.path.exists(circuit_image_path):
-            story.append(Image(circuit_image_path, width=400, height=200))
-        story.append(Spacer(1, 20))
-
-        # Table with initial data
-        data = {
-            "Qubits": self.qubits,
-            "Depth": self.depth,
-            "Shots": self.results[0]["Final Counts"]["shots"],
-            "Max Iterations": self.num_iterations,
-        }
-        data_df = pd.DataFrame([data])
-        table = Table([data_df.columns.tolist()] + data_df.values.tolist())
+    def add_comparison_section(self, story):
+        story.append(Paragraph("Comparison of Initial and Final States", self.styles['Heading2']))
+        story.append(Spacer(1, 12))
+        
+        # Example: Adding a table with formatted data
+        comparison_data = [[str(i) for i in row] for row in self.comparison_df.values.tolist()]
+        table = Table([self.comparison_df.columns.tolist()] + comparison_data)
         table.setStyle(
             TableStyle(
                 [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
                 ]
             )
         )
         story.append(table)
         story.append(Spacer(1, 20))
-        story.append(PageBreak())
 
-    def add_loss_function_plots(self, story):
-        # Section 2: Loss Function Plots
-        story.append(
-            Paragraph("<a name='section2'/>2. Loss Function Plots", self.styles["Heading2"])
-        )
-        story.append(Spacer(1, 20))
-
-        # Group loss functions (max 5 per plot)
-        losses = self.results['loss']
-        num_plots = (len(losses) + 4) // 5  # Calculate number of plots needed
-
-        for i in range(num_plots):
-            plt.figure(figsize=(10, 6))
-            for j in range(5):
-                index = i * 5 + j
-                if index < len(losses):
-                    plt.plot(losses[index], label=f'Loss Function {index+1}')
-
-            plt.title(f"Loss Functions {i*5+1} to {(i+1)*5}")
-            plt.xlabel("Iterations")
-            plt.ylabel("Loss")
-            plt.legend()
-            loss_plot_path = os.path.join("var", f"loss_plot_{i+1}.png")
-            plt.savefig(loss_plot_path)
-            plt.close()
-
-            # Add loss plot to the report
-            story.append(Image(loss_plot_path, width=400, height=300))
-            story.append(Spacer(1, 20))
+    def add_probability_distributions(self, story):
+        story.append(Paragraph("Probability Distributions", self.styles['Heading2']))
+        story.append(Spacer(1, 12))
         
-        story.append(PageBreak())
-
-    def add_comparison_section(self, story):
-        # Section 3: Comparison Between Initial and Final Results
-        story.append(
-            Paragraph(
-                "<a name='section3'/>3. Comparison Between Initial and Final Results",
-                self.styles["Heading2"],
-            )
-        )
-        story.append(Spacer(1, 20))
-
-        # Create a DataFrame for comparison
-        comparison_data = {
-            "Wort": self.results["words"],
-            "Initial Zustand": self.results["initial_states"],
-            "Initial Wahrscheinlichkeit": self.results["initial_probabilities"],
-            "Final Zustand": self.results["final_states"],
-            "Final Wahrscheinlichkeit": self.results["final_probabilities"],
-        }
-        comparison_df = pd.DataFrame(comparison_data)
-
-        # Add the comparison table
-        table_data = [
-            [str(i) for i in row] for row in comparison_df.round(4).values.tolist()
-        ]  # Convert all elements to strings
-        comparison_table = Table([comparison_df.columns.tolist()] + table_data)
-        comparison_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
-        story.append(comparison_table)
-        story.append(Spacer(1, 20))
-
-        # Generate probability distribution plots for each word
-        for index, word in enumerate(self.results["words"]):
-            probabilities = self.results["probabilities"][index]
+        for word, data in self.final_summary.items():
+            # Assuming data is a dictionary with probability distributions
+            probabilities = data.get('probabilities', {})
             plt.figure(figsize=(10, 6))
-            plt.bar(range(len(probabilities)), probabilities, color='blue', alpha=0.7)
-            plt.title(f"Probability Distribution for '{word}'")
-            plt.xlabel("State Index")
-            plt.ylabel("Probability")
-            plt.xticks(range(len(probabilities)))
-            plot_path = os.path.join("var", f"probability_plot_{index+1}.png")
-            plt.savefig(plot_path)
+            plt.bar(probabilities.keys(), probabilities.values(), color='blue')
+            plt.xlabel('States')
+            plt.ylabel('Probability')
+            plt.title(f'Probability Distribution for {word}')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            image_path = f"{word}_distribution.png"
+            plt.savefig(image_path)
             plt.close()
 
-            # Add plot to the report
-            story.append(Image(plot_path, width=400, height=300))
+            # Add image to PDF
+            story.append(Paragraph(f"Probability Distribution for {word}", self.styles['Heading3']))
+            story.append(Image(image_path, width=400, height=300))
             story.append(Spacer(1, 20))
-
-        story.append(PageBreak())
-
-    def add_final_results_section(self, story):
-        # Section 4: Final Results
-        story.append(
-            Paragraph("<a name='section4'/>4. Final Results", self.styles["Heading2"])
-        )
-        story.append(Spacer(1, 20))
-
-        # Determine the best optimizer
-        final_df = pd.DataFrame(self.results)
-        final_df["Improvement"] = (
-            final_df["Final Wahrscheinlichkeit"] - final_df["Initial Wahrscheinlichkeit"]
-        )
-        best_optimizer = final_df.loc[
-            final_df["Improvement"].idxmax(), "Optimizer"
-        ]
-
-        final_results_content = f"The most effective optimization method was <b>{best_optimizer}</b>, which achieved the highest improvement in target state probability."
-
-        final_results_section = FinalResultsSection(content=final_results_content)
-        final_results_section.build(story, self.styles)
-
 
 class TitlePage:
     def __init__(

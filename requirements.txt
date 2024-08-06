@@ -3,4 +3,4 @@ flake8
 numpy
 pandas
 matplotlib
-# Add other dependencies here
+qiskit-aer
